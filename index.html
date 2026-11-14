@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIS Shift Scheduler & Branch Planner</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- html2canvas for PNG Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- ================= LOGIN SCREEN OVERLAY ================= -->
+  <div id="loginOverlay" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500"></div>
+      
+      <div class="text-center mb-6">
+        <div class="inline-block bg-blue-600 text-white font-black px-3.5 py-2 rounded-lg text-sm tracking-wider shadow mb-3">MIS</div>
+        <h2 class="text-xl font-bold text-slate-100">MIS Shift Scheduler Portal</h2>
+        <p class="text-xs text-slate-400 mt-1">Holy Mother of Mercy Group of Hospitals</p>
+      </div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Personnel / Role</label>
+          <select id="loginUserSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500">
+            <optgroup label="Department Heads (Full Access)">
+              <option value="ALLEN MONDEJAR">ALLEN MONDEJAR (Head)</option>
+              <option value="JUDY MAE PAGAYUNAN">JUDY MAE PAGAYUNAN (Head)</option>
+              <option value="admin">Administrator / MIS Supervisor (Head)</option>
+            </optgroup>
+            <optgroup label="Staff Personnel (View & Requisition Only)">
+              <option value="STEPHEN ABELONG">STEPHEN ABELONG (Staff)</option>
+              <option value="ROWYN CORONADO">ROWYN CORONADO (Staff)</option>
+              <option value="RESTY EYAN">RESTY EYAN (Staff)</option>
+              <option value="RICHARD DAVID">RICHARD DAVID (Staff)</option>
+              <option value="JULIA TRINA">JULIA TRINA (Staff)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Security Password / Temporary Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••••••" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500">
+          <div class="flex justify-between items-center mt-1.5 text-[11px] text-slate-500">
+            <span>Admin Passcode: <code class="text-blue-400 font-mono">OPPSSSS</code></span>
+            <span>Temp Pass: <code class="text-amber-400 font-mono">TEMP-MIS</code></span>
+          </div>
+        </div>
+        <div id="loginErrorMsg" class="text-xs text-rose-400 font-semibold hidden"></div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm py-2.5 rounded-lg shadow-lg transition mt-2">
+          Authenticate & Open Schedule
+        </button>
+
+        <div class="text-center pt-2 border-t border-slate-800/80">
+          <button type="button" id="btnOpenRequestReset" class="text-xs text-amber-400 hover:text-amber-300 font-semibold underline">
+            Forgot Password? Request Reset to Temp Pass
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- REQUEST PASSWORD RESET MODAL -->
+  <div id="requestResetModal" class="fixed inset-0 bg-slate-950 z-[70] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-amber-500"></div>
+      <div class="text-center mb-5">
+        <div class="inline-block bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs tracking-wider shadow mb-2">RESET ACCESS</div>
+        <h3 class="text-base font-bold text-slate-100">Request Password Reset</h3>
+        <p class="text-xs text-slate-400 mt-1">Select your account to instantly activate temporary password <code class="text-amber-400 font-mono">TEMP-MIS-2026</code>.</p>
+      </div>
+
+      <form id="requestResetForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Your Account</label>
+          <select id="resetAccountSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+            <option value="STEPHEN ABELONG">STEPHEN ABELONG (Staff)</option>
+            <option value="ROWYN CORONADO">ROWYN CORONADO (Staff)</option>
+            <option value="RESTY EYAN">RESTY EYAN (Staff)</option>
+            <option value="RICHARD DAVID">RICHARD DAVID (Staff)</option>
+            <option value="JULIA TRINA">JULIA TRINA (Staff)</option>
+            <option value="ALLEN MONDEJAR">ALLEN MONDEJAR (Head)</option>
+            <option value="JUDY MAE PAGAYUNAN">JUDY MAE PAGAYUNAN (Head)</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="cancelResetModalBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded transition">Cancel</button>
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-2 rounded shadow transition">Activate Temp Pass</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CHANGE PASSWORD MODAL (Triggered on Temporary Password Login or Head Request) -->
+  <div id="changePasswordModal" class="fixed inset-0 bg-slate-950 z-[60] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/50 rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-amber-500"></div>
+      <div class="text-center mb-6">
+        <div class="inline-block bg-amber-500 text-slate-950 font-black px-3.5 py-2 rounded-lg text-sm tracking-wider shadow mb-3">SECURITY UPDATE</div>
+        <h2 id="changePasswordModalTitle" class="text-xl font-bold text-slate-100">Change Your Password</h2>
+        <p id="changePasswordModalSub" class="text-xs text-slate-400 mt-1">Please set a new secure password.</p>
+      </div>
+
+      <form id="changePasswordForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
+          <input type="password" id="newPasswordInput" placeholder="Enter new password..." required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
+          <input type="password" id="confirmPasswordInput" placeholder="Confirm new password..." required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
+        </div>
+        <div id="passwordErrorMsg" class="text-xs text-rose-400 font-semibold hidden"></div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="cancelChangePwdBtn" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded transition hidden">Cancel</button>
+          <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm py-2.5 rounded-lg shadow-lg transition">
+            Save New Password
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN PASSWORD RESET MANAGER MODAL -->
+  <div id="adminResetModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-100">Admin Password Reset Manager</h3>
+          <p class="text-xs text-slate-400">Reset any user password back to temporary passcode <code class="text-amber-400 font-mono">TEMP-MIS-2026</code></p>
+        </div>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/50 p-3 mb-4">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2.5">Personnel / Account</th>
+              <th class="p-2.5">Role Type</th>
+              <th class="p-2.5 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="resetUserTableBody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end">
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Close Manager</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="bg-blue-600 text-white font-black px-3 py-1.5 rounded text-sm tracking-wider shadow">MIS</div>
+      <div>
+        <h1 class="font-bold text-base tracking-wide flex items-center gap-2 text-slate-100">
+          MIS Shift Scheduler
+          <div class="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-blue-400">
+            <button id="btnPrevMonth" class="hover:text-white px-1 font-bold" title="Previous Month">◀</button>
+            <span id="headerMonthTitle" class="font-semibold px-1">December 2026</span>
+            <button id="btnNextMonth" class="hover:text-white px-1 font-bold" title="Next Month">▶</button>
+          </div>
+          <span id="lockStatusBadge" class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Unlocked</span>
+          <span id="userRoleBadge" class="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Role: Head</span>
+        </h1>
+        <p class="text-xs text-slate-400">Clean Monthly Roster & Branch Planner</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Notification Bell Dashboard Button -->
+      <button id="btnNotifications" class="relative flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded border border-slate-700 transition" title="Message Dashboard & Notifications">
+        <span>🔔 Notifications</span>
+        <span id="notifBadge" class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-bold px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+      </button>
+
+      <!-- Head-Only Action Buttons Group (Hidden for Staff) -->
+      <div id="headActionButtons" class="flex flex-wrap items-center gap-2">
+        <button id="btnChangeMyPassword" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs font-semibold px-3 py-2 rounded shadow transition" title="Change Head Account Password">
+          <span>🔑 Change Password</span>
+        </button>
+        <button id="btnAdminResetManager" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/40 text-xs font-semibold px-3 py-2 rounded shadow transition" title="Admin Reset User Passwords">
+          <span>🛡️ Reset Passwords</span>
+        </button>
+        <button id="btnNewRoster" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+          <span>+ New</span>
+        </button>
+        <button id="btnClearRange" class="flex items-center gap-1.5 bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-2 rounded shadow transition" title="Clear specific date range per staff">
+          <span>Clear Range</span>
+        </button>
+        <button id="btnClearGrid" class="flex items-center gap-1.5 bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+          <span>Delete All</span>
+        </button>
+        <button id="btnSaveState" class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+          <span>Save</span>
+        </button>
+        <button id="btnHeadEdit" class="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-3 py-2 rounded shadow transition" title="Head Passcode Unlock">
+          <span>🔒 Edit (Head)</span>
+        </button>
+        <button id="btnManagerApprovals" class="flex items-center gap-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold px-3 py-2 rounded shadow transition" title="MIS Manager Approval Portal">
+          <span>🛡️ Approvals</span>
+          <span id="pendingTxCountBadge" class="bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px] font-bold">0</span>
+        </button>
+        <button id="btnBackupDb" class="flex items-center gap-1.5 bg-violet-700 hover:bg-violet-600 text-white text-xs font-semibold px-3 py-2 rounded shadow transition" title="Backup all rosters, legends & audit logs">
+          <span>💾 Backup DB</span>
+        </button>
+        <label id="btnRestoreDbLbl" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-violet-300 border border-violet-700 text-xs font-semibold px-3 py-2 rounded cursor-pointer transition" title="Restore system from backup file">
+          <span>📂 Restore DB</span>
+          <input type="file" id="restoreDbInput" accept=".json" class="hidden">
+        </label>
+        <button id="btnSavePng" class="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+          <span>Save as PNG</span>
+        </button>
+        <button id="btnSavePdf" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+          <span>Save as PDF</span>
+        </button>
+        <button id="btnLegend" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded border border-slate-700 transition">
+          <span>Legend Guide</span>
+        </button>
+      </div>
+
+      <!-- Shared / Staff Action Buttons Group (View Changes & Request Transaction Allowed) -->
+      <button id="btnViewChanges" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded border border-slate-700 transition">
+        <span>View Changes</span>
+        <span id="changeCountBadge" class="bg-blue-600 text-white px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+      </button>
+      <button id="btnRequestTransaction" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded shadow transition">
+        <span>Request Transaction</span>
+      </button>
+      <button id="btnLogout" class="flex items-center gap-1.5 bg-rose-900/60 hover:bg-rose-900 text-rose-200 text-xs font-semibold px-3 py-2 rounded border border-rose-800 transition ml-2" title="Log Out">
+        <span>🔓 Lock Session</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- LEGEND PALETTE BAR -->
+  <section class="bg-slate-950/80 border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded text-xs uppercase tracking-wider">Shift Codes</span>
+          <span class="text-xs text-slate-400" id="legendInstructions">Click any staff cell to assign branch schedules.</span>
+        </div>
+        <!-- Head-Only Manage Legends Button -->
+        <button id="btnManageLegends" class="hidden items-center gap-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-semibold px-2.5 py-1 rounded transition">
+          <span>⚙️ Manage Legends & Colors</span>
+        </button>
+      </div>
+      <div id="badgePaletteContainer" class="flex flex-wrap gap-2 pt-1"></div>
+    </div>
+  </section>
+
+  <!-- FILTER & SEARCH BAR -->
+  <section class="bg-slate-900/50 border-b border-slate-800 px-4 py-2.5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Department:</span>
+        <span class="bg-slate-800 text-slate-200 text-xs font-bold px-3 py-1 rounded border border-slate-700">MANAGEMENT INFORMATION SYSTEM</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="searchStaffInput" class="text-xs text-slate-400">Quick Filter Staff:</label>
+        <input type="text" id="searchStaffInput" placeholder="Search staff name..." class="bg-slate-800 border border-slate-700 text-xs text-slate-100 px-3 py-1.5 rounded focus:outline-none focus:border-blue-500 w-48">
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN ROSTER GRID WORKSPACE -->
+  <main class="flex-1 overflow-auto p-4 max-w-[100vw]">
+    <div class="inline-block min-w-full align-middle">
+      <div id="rosterTableContainer" class="overflow-hidden border border-slate-800 rounded-lg shadow-xl bg-slate-950"></div>
+    </div>
+  </main>
+
+  <!-- SUMMARY FOOTER BAR -->
+  <footer class="bg-slate-900 border-t border-slate-800 px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+    <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-slate-400 uppercase tracking-wider">Personnel</p>
+        <p class="text-xs text-slate-500 mt-0.5">2 Heads • 5 Staff</p>
+      </div>
+      <span id="footerPersonnelCount" class="text-2xl font-bold text-slate-100">7</span>
+    </div>
+    <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-slate-400 uppercase tracking-wider">Scheduled Duty Days</p>
+        <p class="text-xs text-slate-500 mt-0.5">Active shifts & field duty</p>
+      </div>
+      <span id="footerDutyDays" class="text-2xl font-bold text-blue-400">134</span>
+    </div>
+    <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-slate-400 uppercase tracking-wider">Off / Leave / HO</p>
+        <p class="text-xs text-slate-500 mt-0.5">Rest days & approved absences</p>
+      </div>
+      <span id="footerOffDays" class="text-2xl font-bold text-purple-400">61</span>
+    </div>
+  </footer>
+
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- NOTIFICATION & MESSAGE DASHBOARD MODAL -->
+  <div id="notificationModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <h3 class="text-base font-bold text-slate-100">Message Dashboard & Alerts</h3>
+          <span id="modalNotifCount" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </div>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs text-slate-400">System notifications and transaction updates.</p>
+        <button id="btnClearAllNotifs" class="text-xs text-rose-400 hover:text-rose-300 font-semibold underline">Clear All</button>
+      </div>
+
+      <!-- Notifications List Container -->
+      <div id="notificationListContainer" class="flex-1 overflow-y-auto space-y-2.5 pr-1 mb-4"></div>
+
+      <div class="flex justify-end">
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Close Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLEAR NOTIFICATIONS PASSCODE MODAL -->
+  <div id="clearNotifPasscodeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Clear Notifications Passcode</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <form id="clearNotifPasscodeForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Enter Passcode to Clear All</label>
+          <input type="password" id="clearNotifPasscodeInput" placeholder="••••••••••••" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-rose-500">
+          <p class="text-[11px] text-slate-500 mt-1">Required Passcode: <code class="text-rose-400 font-mono">OKAY</code></p>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-1.5 rounded shadow transition">Authorize & Clear All</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MANAGER PASSWORD AUTHENTICATION MODAL -->
+  <div id="managerAuthModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">MIS Manager Authorization</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <form id="managerAuthForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Enter MIS Manager Password</label>
+          <input type="password" id="managerPasswordInput" placeholder="••••••••••••" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500">
+          <p class="text-[11px] text-slate-500 mt-1">Default Password: <code class="text-purple-400 font-mono">SECRET</code></p>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-1.5 rounded shadow transition">Access Approval Portal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MANAGER APPROVALS PORTAL MODAL -->
+  <div id="managerApprovalModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-3xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-100">MIS Manager Transaction Approval Portal</h3>
+          <p class="text-xs text-slate-400">Authorized Manager: Crisame L. Yanson</p>
+        </div>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/50 p-3 mb-4">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2.5">Date Filed</th>
+              <th class="p-2.5">Staff</th>
+              <th class="p-2.5">Category</th>
+              <th class="p-2.5">Target Date</th>
+              <th class="p-2.5">Details</th>
+              <th class="p-2.5">Status</th>
+              <th class="p-2.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="approvalTableBody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end">
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Close Portal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE LEGENDS & COLOR ADJUSTMENT MODAL -->
+  <div id="manageLegendsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Manage Shift Codes & Colors</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <form id="legendForm" class="bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 mb-4 space-y-3">
+        <input type="hidden" id="editLegendIndex" value="-1">
+        <h4 id="legendFormTitle" class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Add New Shift Code</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Code Abbreviation</label>
+            <input type="text" id="legendCodeInput" placeholder="e.g. NIGHT" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-cyan-500 uppercase font-bold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Background Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="legendBgColor" value="#2563eb" class="w-9 h-8 bg-slate-800 border border-slate-700 rounded cursor-pointer p-1">
+              <span class="text-[10px] text-slate-400">BG</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Font Color</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="legendFontColor" value="#ffffff" class="w-9 h-8 bg-slate-800 border border-slate-700 rounded cursor-pointer p-1">
+              <span class="text-[10px] text-slate-400">Text</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Description / Label</label>
+          <input type="text" id="legendLabelInput" placeholder="e.g. Night Shift Duty" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-cyan-500">
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" id="cancelLegendEditBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition hidden">Cancel</button>
+          <button type="submit" id="saveLegendBtn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs px-4 py-1.5 rounded shadow transition">Add Legend</button>
+        </div>
+      </form>
+
+      <div class="flex-1 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/40 p-2">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2">Code / Badge Preview</th>
+              <th class="p-2">Description</th>
+              <th class="p-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="legendTableBody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLEAR DATE RANGE PER STAFF MODAL -->
+  <div id="clearRangeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Clear Range Per Staff</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Staff Member</label>
+          <select id="clearStaffSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Start Day (1 - <span id="maxDaysStartLbl">31</span>)</label>
+            <input type="number" id="clearStartDay" min="1" value="1" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">End Day (1 - <span id="maxDaysEndLbl">31</span>)</label>
+            <input type="number" id="clearEndDay" min="1" value="15" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="button" id="confirmClearRangeBtn" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-1.5 rounded shadow transition">Clear Range</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PNG EXPORT RANGE & BRANCH MODAL -->
+  <div id="pngModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Export Roster as PNG</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Branch / Area Filter</label>
+          <select id="pngBranchSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-cyan-500">
+            <option value="all">All Branches (Full Department)</option>
+            <option value="KABANKALAN BRANCH">Kabankalan Branch</option>
+            <option value="HINIGARAN BRANCH">Hinigaran Branch</option>
+            <option value="HINOBA-AN BRANCH">Hinoba-an Branch</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Date Range</label>
+          <select id="pngRangeSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-cyan-500">
+            <option value="full">Full Month</option>
+            <option value="1-15">1st to 15th</option>
+            <option value="16-end">16th to End of Month</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="button" id="confirmPngExportBtn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs px-4 py-1.5 rounded shadow transition">Download PNG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF EXPORT RANGE & BRANCH MODAL -->
+  <div id="pdfModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Save Roster as PDF</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Branch / Area Filter</label>
+          <select id="pdfBranchSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="all">All Branches (Full Department)</option>
+            <option value="KABANKALAN BRANCH">Kabankalan Branch</option>
+            <option value="HINIGARAN BRANCH">Hinigaran Branch</option>
+            <option value="HINOBA-AN BRANCH">Hinoba-an Branch</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Date Range</label>
+          <select id="pdfRangeSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="full">Full Month</option>
+            <option value="1-15">1st to 15th</option>
+            <option value="16-end">16th to End of Month</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="button" id="confirmPdfExportBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-1.5 rounded shadow transition">Generate PDF / Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEAD EDIT PASSCODE MODAL -->
+  <div id="passcodeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Head Authorization Passcode</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <form id="passcodeForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Enter Department Head Passcode</label>
+          <input type="password" id="headPasscodeInput" placeholder="••••••••••••" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+          <p class="text-[11px] text-slate-500 mt-1">Default Passcode: <code class="text-amber-400 font-mono">MIS-HEAD-2026</code></p>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs px-4 py-1.5 rounded shadow transition">Unlock Editing</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CLEAR AUDIT PASSCODE MODAL -->
+  <div id="clearAuditPasscodeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-100">Clear Audit Log Passcode</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <form id="clearAuditPasscodeForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Enter Passcode to Clear History</label>
+          <input type="password" id="clearAuditPasscodeInput" placeholder="••••••••••••" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-rose-500">
+          <p class="text-[11px] text-slate-500 mt-1">Required Passcode: <code class="text-rose-400 font-mono">password</code></p>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-1.5 rounded shadow transition">Authorize & Clear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- BRANCH SHIFT ASSIGNMENT MODAL -->
+  <div id="cellAssignModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 id="modalStaffTitle" class="text-sm font-bold text-slate-100">Staff Name</h3>
+          <p id="modalDateTitle" class="text-xs text-blue-400">Day X</p>
+        </div>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Shift / Branch Assignment</label>
+          <select id="modalShiftSelect" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded transition">Cancel</button>
+          <button type="button" id="modalSaveShiftBtn" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-1.5 rounded shadow transition">Apply Shift</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW ROSTER MODAL -->
+  <div id="newRosterModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-100">Create New Monthly Roster</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <form id="newRosterForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Select Month</label>
+          <select id="newRosterMonth" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="January">January</option>
+            <option value="February">February</option>
+            <option value="March">March</option>
+            <option value="April">April</option>
+            <option value="May">May</option>
+            <option value="June">June</option>
+            <option value="July">July</option>
+            <option value="August">August</option>
+            <option value="September">September</option>
+            <option value="October">October</option>
+            <option value="November">November</option>
+            <option value="December" selected>December</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Year</label>
+          <input type="number" id="newRosterYear" value="2026" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Cancel</button>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded shadow transition">Generate Roster</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- REQUEST TRANSACTION MODAL -->
+  <div id="transactionModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-100">MIS Transaction Request</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <form id="transactionForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Transaction Category</label>
+          <select id="txCategory" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="Switch Sched">Request Switch Sched</option>
+            <option value="Leave">Request Leave</option>
+            <option value="Overtime">Request Overtime</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Staff Name</label>
+          <select id="txStaffName" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="ALLEN MONDEJAR">ALLEN MONDEJAR (Head)</option>
+            <option value="STEPHEN ABELONG">STEPHEN ABELONG (Staff)</option>
+            <option value="JUDY MAE PAGAYUNAN">JUDY MAE PAGAYUNAN (Head)</option>
+            <option value="ROWYN CORONADO">ROWYN CORONADO (Staff)</option>
+            <option value="RESTY EYAN">RESTY EYAN (Staff)</option>
+            <option value="RICHARD DAVID">RICHARD DAVID (Staff)</option>
+            <option value="JULIA TRINA">JULIA TRINA (Staff)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Target Date</label>
+            <input type="date" id="txDate" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </div>
+          <div id="txDynamicFieldWrapper">
+            <label id="txDynamicLabel" class="block text-xs font-semibold text-slate-400 mb-1">Switch With Peer</label>
+            <select id="txPeerOrDetails" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="STEPHEN ABELONG">STEPHEN ABELONG</option>
+              <option value="JUDY MAE PAGAYUNAN">JUDY MAE PAGAYUNAN</option>
+              <option value="ROWYN CORONADO">ROWYN CORONADO</option>
+              <option value="RESTY EYAN">RESTY EYAN</option>
+              <option value="RICHARD DAVID">RICHARD DAVID</option>
+              <option value="JULIA TRINA">JULIA TRINA</option>
+              <option value="ALLEN MONDEJAR">ALLEN MONDEJAR</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Reason / Justification</label>
+          <textarea id="txReason" rows="3" placeholder="Provide brief explanation..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Cancel</button>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded shadow transition">Submit & Print Slip</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIEW CHANGES / AUDIT LOG MODAL -->
+  <div id="changesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-100">Schedule Adjustment Audit Trail</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/50 p-2 mb-4">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2.5">Timestamp</th>
+              <th class="p-2.5">Staff Member</th>
+              <th class="p-2.5">Day</th>
+              <th class="p-2.5">Previous</th>
+              <th class="p-2.5">New Shift</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+      <div class="flex justify-between items-center">
+        <button type="button" id="btnClearAudit" class="bg-rose-900/40 hover:bg-rose-900 text-rose-300 text-xs px-3 py-1.5 rounded border border-rose-800 transition">Clear History Log</button>
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND GUIDE MODAL -->
+  <div id="legendModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-100">Shift Code Legend Guide</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div id="legendGuideContainer" class="space-y-2 text-xs text-slate-300 max-h-[60vh] overflow-y-auto pr-1"></div>
+      <div class="mt-5 flex justify-end">
+        <button class="closeModalBtn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded transition">Got It</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    let currentUserRole = "Head";
+    let activeUsername = "";
+    let isForcedPasswordChange = false;
+    
+    // Load custom passwords store from localStorage if available
+    let userPasswords = JSON.parse(localStorage.getItem("mis_user_passwords")) || {
+      "ALLEN MONDEJAR": "MIS8*8*",
+      "JUDY MAE PAGAYUNAN": "MIS8*8*",
+      "admin": "MIS8*8*",
+      "STEPHEN ABELONG": "TEMP-MIS-2026",
+      "ROWYN CORONADO": "TEMP-MIS-2026",
+      "RESTY EYAN": "TEMP-MIS-2026",
+      "RICHARD DAVID": "TEMP-MIS-2026",
+      "JULIA TRINA": "TEMP-MIS-2026"
+    };
+
+    const loginOverlay = document.getElementById("loginOverlay");
+    const loginForm = document.getElementById("loginForm");
+    const loginUserSelect = document.getElementById("loginUserSelect");
+    const loginPassword = document.getElementById("loginPassword");
+    const loginErrorMsg = document.getElementById("loginErrorMsg");
+
+    const changePasswordModal = document.getElementById("changePasswordModal");
+    const changePasswordForm = document.getElementById("changePasswordForm");
+    const newPasswordInput = document.getElementById("newPasswordInput");
+    const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+    const passwordErrorMsg = document.getElementById("passwordErrorMsg");
+    const changePasswordModalTitle = document.getElementById("changePasswordModalTitle");
+    const changePasswordModalSub = document.getElementById("changePasswordModalSub");
+    const cancelChangePwdBtn = document.getElementById("cancelChangePwdBtn");
+
+    const adminResetModal = document.getElementById("adminResetModal");
+    const resetUserTableBody = document.getElementById("resetUserTableBody");
+
+    const requestResetModal = document.getElementById("requestResetModal");
+    const requestResetForm = document.getElementById("requestResetForm");
+    const resetAccountSelect = document.getElementById("resetAccountSelect");
+
+    const userRoleBadge = document.getElementById("userRoleBadge");
+    const headActionButtons = document.getElementById("headActionButtons");
+    const btnManageLegends = document.getElementById("btnManageLegends");
+    const legendInstructions = document.getElementById("legendInstructions");
+
+    loginForm.onsubmit = (e) => {
+      e.preventDefault();
+      const selectedUser = loginUserSelect.value;
+      const pwd = loginPassword.value.trim();
+
+      const expectedPwd = userPasswords[selectedUser] || "MIS8*8*";
+
+      if (pwd === expectedPwd) {
+        activeUsername = selectedUser;
+        
+        // Check if user is logging in with temporary password
+        if (pwd === "TEMP-MIS-2026") {
+          isForcedPasswordChange = true;
+          loginOverlay.classList.add("hidden");
+          changePasswordModalTitle.textContent = "Change Your Temporary Password";
+          changePasswordModalSub.textContent = "You logged in using a temporary password. Please set a new personal password to continue.";
+          cancelChangePwdBtn.classList.add("hidden");
+          changePasswordModal.classList.remove("hidden");
+          changePasswordModal.classList.add("flex");
+          return;
+        }
+
+        finalizeLogin(selectedUser);
+      } else {
+        loginErrorMsg.textContent = "Invalid password. Use MIS8*8* or TEMP-MIS-2026";
+        loginErrorMsg.classList.remove("hidden");
+      }
+    };
+
+    // Request Reset Modal Triggers from Login Screen
+    document.getElementById("btnOpenRequestReset").onclick = () => {
+      requestResetModal.classList.remove("hidden");
+      requestResetModal.classList.add("flex");
+    };
+
+    document.getElementById("cancelResetModalBtn").onclick = () => {
+      requestResetModal.classList.add("hidden");
+      requestResetModal.classList.remove("flex");
+    };
+
+    requestResetForm.onsubmit = (e) => {
+      e.preventDefault();
+      const targetUser = resetAccountSelect.value;
+      
+      // Set password to temporary passcode
+      userPasswords[targetUser] = "TEMP-MIS-2026";
+      localStorage.setItem("mis_user_passwords", JSON.stringify(userPasswords));
+
+      // Log notification for department heads
+      const newNotif = {
+        id: Date.now(),
+        time: new Date().toISOString().slice(0,16).replace('T', ' '),
+        title: `Password Reset Requested`,
+        message: `${targetUser} requested a password reset. Temporary password (TEMP-MIS-2026) has been activated.`,
+        unread: true
+      };
+      systemNotifications.unshift(newNotif);
+      localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+      updateNotificationBadges();
+
+      requestResetModal.classList.add("hidden");
+      requestResetModal.classList.remove("flex");
+      loginPassword.value = "TEMP-MIS-2026";
+      loginUserSelect.value = targetUser;
+      alert(`Password reset successful for ${targetUser}! Temporary passcode (TEMP-MIS-2026) has been activated. You can now log in.`);
+    };
+
+    // Head / Admin Manual Change Password Button Trigger
+    document.getElementById("btnChangeMyPassword").onclick = () => {
+      isForcedPasswordChange = false;
+      changePasswordModalTitle.textContent = `Change Password (${activeUsername})`;
+      changePasswordModalSub.textContent = "Update your account password securely.";
+      cancelChangePwdBtn.classList.remove("hidden");
+      newPasswordInput.value = "";
+      confirmPasswordInput.value = "";
+      passwordErrorMsg.classList.add("hidden");
+      changePasswordModal.classList.remove("hidden");
+      changePasswordModal.classList.add("flex");
+    };
+
+    changePasswordForm.onsubmit = (e) => {
+      e.preventDefault();
+      const newPwd = newPasswordInput.value.trim();
+      const confirmPwd = confirmPasswordInput.value.trim();
+
+      if (newPwd.length < 6) {
+        passwordErrorMsg.textContent = "Password must be at least 6 characters long.";
+        passwordErrorMsg.classList.remove("hidden");
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        passwordErrorMsg.textContent = "Passwords do not match.";
+        passwordErrorMsg.classList.remove("hidden");
+        return;
+      }
+
+      // Save new password
+      userPasswords[activeUsername] = newPwd;
+      localStorage.setItem("mis_user_passwords", JSON.stringify(userPasswords));
+
+      changePasswordModal.classList.add("hidden");
+      changePasswordModal.classList.remove("flex");
+      newPasswordInput.value = "";
+      confirmPasswordInput.value = "";
+      passwordErrorMsg.classList.add("hidden");
+
+      if (isForcedPasswordChange) {
+        finalizeLogin(activeUsername);
+        alert("Password successfully updated! Welcome to the MIS Scheduler.");
+      } else {
+        alert("Your account password has been successfully updated!");
+      }
+    };
+
+    // Admin Reset Password Manager Trigger
+    document.getElementById("btnAdminResetManager").onclick = () => {
+      renderResetUserTable();
+      adminResetModal.classList.remove("hidden");
+      adminResetModal.classList.add("flex");
+    };
+
+    function renderResetUserTable() {
+      const accounts = [
+        { name: "ALLEN MONDEJAR", role: "Head" },
+        { name: "JUDY MAE PAGAYUNAN", role: "Head" },
+        { name: "admin", role: "Administrator / MIS Head" },
+        { name: "STEPHEN ABELONG", role: "Staff" },
+        { name: "ROWYN CORONADO", role: "Staff" },
+        { name: "RESTY EYAN", role: "Staff" },
+        { name: "RICHARD DAVID", role: "Staff" },
+        { name: "JULIA TRINA", role: "Staff" }
+      ];
+
+      let html = "";
+      accounts.forEach(acc => {
+        html += `<tr class="hover:bg-slate-900">
+          <td class="p-2.5 font-medium text-slate-200">${acc.name}</td>
+          <td class="p-2.5 text-slate-400 text-[11px]">${acc.role}</td>
+          <td class="p-2.5 text-right">
+            <button type="button" onclick="window.resetUserPassword('${acc.name}')" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] px-3 py-1 rounded transition">Reset to Temp</button>
+          </td>
+        </tr>`;
+      });
+      resetUserTableBody.innerHTML = html;
+    }
+
+    window.resetUserPassword = function(username) {
+      if (confirm(`Are you sure you want to reset password for ${username} to temporary passcode (TEMP-MIS-2026)?`)) {
+        userPasswords[username] = "TEMP-MIS-2026";
+        localStorage.setItem("mis_user_passwords", JSON.stringify(userPasswords));
+        
+        const notif = {
+          id: Date.now(),
+          time: new Date().toISOString().slice(0,16).replace('T', ' '),
+          title: `Admin Password Reset`,
+          message: `Admin reset password for ${username} to temporary passcode (TEMP-MIS-2026).`,
+          unread: true
+        };
+        systemNotifications.unshift(notif);
+        localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+        updateNotificationBadges();
+
+        alert(`Password for ${username} has been reset to TEMP-MIS-2026.`);
+      }
+    };
+
+    function finalizeLogin(selectedUser) {
+      if (selectedUser.includes("Staff") || (selectedUser !== "admin" && !selectedUser.includes("ALLEN") && !selectedUser.includes("JUDY"))) {
+        currentUserRole = "Staff";
+        userRoleBadge.textContent = "Role: Staff (View & Requisition)";
+        userRoleBadge.className = "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded text-[10px] uppercase";
+        
+        // Hide head administrative controls, export buttons & legend manager for Staff
+        headActionButtons.style.display = "none";
+        btnManageLegends.style.display = "none";
+
+        legendInstructions.textContent = "Viewing schedule. Staff permissions restricted to viewing and requisition.";
+        document.getElementById("txStaffName").value = selectedUser;
+      } else {
+        currentUserRole = "Head";
+        userRoleBadge.textContent = "Role: Head (Full Access)";
+        userRoleBadge.className = "bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold px-2 py-0.5 rounded text-[10px] uppercase";
+        
+        // Show head controls for Heads/Admin
+        headActionButtons.style.display = "flex";
+        btnManageLegends.style.display = "flex";
+
+        legendInstructions.textContent = "Click any staff cell to assign branch schedules.";
+      }
+
+      loginOverlay.classList.add("hidden");
+      loginErrorMsg.classList.add("hidden");
+      loginPassword.value = "";
+      renderRosterTable(searchStaffInput.value);
+    }
+
+    document.getElementById("btnLogout").onclick = () => {
+      loginOverlay.classList.remove("hidden");
+      loginPassword.value = "";
+    };
+
+    const DEFAULT_SHIFT_BADGES = [
+      { code: "8A-4P", label: "Morning Shift (8A-4P)", bgColor: "#2563eb", fontColor: "#ffffff" },
+      { code: "9A-5P", label: "Standard Shift (9A-5P)", bgColor: "#059669", fontColor: "#ffffff" },
+      { code: "10A-6P", label: "Mid Shift (10A-6P)", bgColor: "#0d9488", fontColor: "#ffffff" },
+      { code: "12P-8P", label: "Afternoon Shift (12P-8P)", bgColor: "#0891b2", fontColor: "#ffffff" },
+      { code: "2P-10P", label: "Evening Shift (2P-10P)", bgColor: "#0e7490", fontColor: "#ffffff" },
+      { code: "OFF", label: "Rest Day", bgColor: "#9333ea", fontColor: "#ffffff" },
+      { code: "SUSPENSION", label: "Suspension", bgColor: "#4338ca", fontColor: "#ffffff" },
+      { code: "KAB", label: "Kabankalan Branch Duty", bgColor: "#7c3aed", fontColor: "#ffffff" },
+      { code: "HBN", label: "Hinoba-an Branch Duty", bgColor: "#312e81", fontColor: "#ffffff" },
+      { code: "HGR", label: "Hinigaran Branch Duty", bgColor: "#1e3a8a", fontColor: "#ffffff" },
+      { code: "HO", label: "Head Office Duty", bgColor: "#a855f7", fontColor: "#ffffff" },
+      { code: "LEAVE", label: "Approved Leave", bgColor: "#facc15", fontColor: "#0f172a" },
+      { code: "ON CALL", label: "On Call", bgColor: "#0284c7", fontColor: "#ffffff" }
+    ];
+
+    let shiftBadges = JSON.parse(localStorage.getItem("mis_shift_badges")) || DEFAULT_SHIFT_BADGES;
+    let transactionRequests = JSON.parse(localStorage.getItem("mis_transaction_requests")) || [
+      { id: 1, filedDate: "2026-11-14 08:30", staff: "STEPHEN ABELONG", category: "Switch Sched", targetDate: "2026-12-05", details: "Switch with ALLEN MONDEJAR", reason: "Family emergency", status: "Pending" },
+      { id: 2, filedDate: "2026-11-13 14:15", staff: "RESTY EYAN", category: "Leave", targetDate: "2026-12-10", details: "Vacation Leave (VL)", reason: "Personal appointment", status: "Pending" }
+    ];
+
+    let systemNotifications = JSON.parse(localStorage.getItem("mis_system_notifications")) || [
+      { id: 101, time: "2026-11-14 08:30", title: "New Transaction Request", message: "STEPHEN ABELONG filed a Switch Sched request for Dec 05, 2026.", unread: true },
+      { id: 102, time: "2026-11-13 14:15", title: "New Leave Request", message: "RESTY EYAN filed a Vacation Leave request for Dec 10, 2026.", unread: true }
+    ];
+
+    const MONTH_LIST = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const INITIAL_ROSTER = {
+      month: "December",
+      year: 2026,
+      daysInMonth: 31,
+      isLocked: false,
+      branches: [
+        {
+          branchName: "KABANKALAN BRANCH (2)",
+          staff: [
+            { name: "ALLEN MONDEJAR", position: "HEAD", shifts: new Array(31).fill("") },
+            { name: "STEPHEN ABELONG", position: "STAFF", shifts: new Array(31).fill("") }
+          ]
+        },
+        {
+          branchName: "HINIGARAN BRANCH (3)",
+          staff: [
+            { name: "JUDY MAE PAGAYUNAN", position: "HEAD", shifts: new Array(31).fill("") },
+            { name: "ROWYN CORONADO", position: "STAFF", shifts: new Array(31).fill("") },
+            { name: "RESTY EYAN", position: "STAFF", shifts: new Array(31).fill("") }
+          ]
+        },
+        {
+          branchName: "HINOBA-AN BRANCH (2)",
+          staff: [
+            { name: "RICHARD DAVID", position: "STAFF", shifts: new Array(31).fill("") },
+            { name: "JULIA TRINA", position: "STAFF", shifts: new Array(31).fill("") }
+          ]
+        }
+      ]
+    };
+
+    let savedRosters = JSON.parse(localStorage.getItem("mis_saved_rosters_dict")) || { "December 2026": INITIAL_ROSTER };
+    let activeKey = localStorage.getItem("mis_active_roster_key") || "December 2026";
+    let currentRoster = savedRosters[activeKey] || INITIAL_ROSTER;
+    let auditLog = JSON.parse(localStorage.getItem("mis_audit_log")) || [];
+    let selectedCellContext = null;
+
+    const badgePaletteContainer = document.getElementById("badgePaletteContainer");
+    const rosterTableContainer = document.getElementById("rosterTableContainer");
+    const headerMonthTitle = document.getElementById("headerMonthTitle");
+    const changeCountBadge = document.getElementById("changeCountBadge");
+    const pendingTxCountBadge = document.getElementById("pendingTxCountBadge");
+    const notifBadge = document.getElementById("notifBadge");
+    const modalNotifCount = document.getElementById("modalNotifCount");
+    const searchStaffInput = document.getElementById("searchStaffInput");
+    const lockStatusBadge = document.getElementById("lockStatusBadge");
+
+    function initApp() {
+      renderBadgePalette();
+      renderRosterTable();
+      populateClearStaffDropdown();
+      populateCellAssignDropdown();
+      updateAuditBadge();
+      updatePendingTxBadge();
+      updateNotificationBadges();
+      updateFooterStats();
+      updateLockUI();
+      headerMonthTitle.textContent = `${currentRoster.month} ${currentRoster.year}`;
+      document.getElementById("maxDaysStartLbl").textContent = currentRoster.daysInMonth;
+      document.getElementById("maxDaysEndLbl").textContent = currentRoster.daysInMonth;
+      document.getElementById("clearEndDay").value = currentRoster.daysInMonth;
+    }
+
+    function populateClearStaffDropdown() {
+      const select = document.getElementById("clearStaffSelect");
+      select.innerHTML = `<option value="all">-- All Staff Members --</option>`;
+      currentRoster.branches.forEach(b => {
+        b.staff.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.name;
+          opt.textContent = `${s.name} (${s.position})`;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function populateCellAssignDropdown() {
+      const select = document.getElementById("modalShiftSelect");
+      let html = `<option value="">(Clear / Blank Cell)</option>`;
+      shiftBadges.forEach(b => {
+        html += `<option value="${b.code}">${b.code} - ${b.label}</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    function updateLockUI() {
+      if (currentRoster.isLocked) {
+        lockStatusBadge.textContent = "LOCKED";
+        lockStatusBadge.className = "bg-rose-600 text-white font-bold px-2 py-0.5 rounded text-[10px] uppercase";
+      } else {
+        lockStatusBadge.textContent = "UNLOCKED";
+        lockStatusBadge.className = "bg-emerald-500 text-slate-950 font-bold px-2 py-0.5 rounded text-[10px] uppercase";
+      }
+    }
+
+    function updatePendingTxBadge() {
+      const pendingCount = transactionRequests.filter(t => t.status === "Pending").length;
+      pendingTxCountBadge.textContent = pendingCount;
+    }
+
+    function updateNotificationBadges() {
+      const unreadCount = systemNotifications.filter(n => n.unread).length;
+      notifBadge.textContent = unreadCount;
+      modalNotifCount.textContent = unreadCount;
+      if (unreadCount === 0) {
+        notifBadge.classList.add("hidden");
+      } else {
+        notifBadge.classList.remove("hidden");
+      }
+    }
+
+    function shiftMonth(direction) {
+      let mIdx = MONTH_LIST.indexOf(currentRoster.month);
+      let yr = currentRoster.year;
+      mIdx += direction;
+      if (mIdx > 11) { mIdx = 0; yr++; }
+      else if (mIdx < 0) { mIdx = 11; yr--; }
+
+      const targetMonth = MONTH_LIST[mIdx];
+      const key = `${targetMonth} ${yr}`;
+
+      if (savedRosters[key]) {
+        currentRoster = savedRosters[key];
+        activeKey = key;
+      } else {
+        const daysCount = new Date(yr, mIdx + 1, 0).getDate();
+        const newBranches = JSON.parse(JSON.stringify(INITIAL_ROSTER.branches));
+        newBranches.forEach(b => {
+          b.staff.forEach(s => {
+            s.shifts = new Array(daysCount).fill("");
+          });
+        });
+        currentRoster = { month: targetMonth, year: yr, daysInMonth: daysCount, isLocked: false, branches: newBranches };
+        savedRosters[key] = currentRoster;
+        activeKey = key;
+      }
+
+      localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+      localStorage.setItem("mis_active_roster_key", activeKey);
+      initApp();
+    }
+
+    document.getElementById("btnPrevMonth").onclick = () => shiftMonth(-1);
+    document.getElementById("btnNextMonth").onclick = () => shiftMonth(1);
+
+    function renderBadgePalette() {
+      badgePaletteContainer.innerHTML = "";
+      shiftBadges.forEach(b => {
+        const btn = document.createElement("button");
+        btn.className = `px-2.5 py-1 rounded text-xs font-bold transition shadow-sm opacity-90 hover:opacity-100`;
+        btn.style.backgroundColor = b.bgColor || "#2563eb";
+        btn.style.color = b.fontColor || "#ffffff";
+        btn.textContent = b.code;
+        btn.title = b.label;
+        btn.onclick = () => {
+          alert(`Shift Code: ${b.code} — ${b.label}`);
+        };
+        badgePaletteContainer.appendChild(btn);
+      });
+    }
+
+    function renderRosterTable(filterText = "", overrideRange = "full", branchFilter = "all") {
+      const daysCount = currentRoster.daysInMonth;
+      const dayNames = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+      const isLocked = currentRoster.isLocked;
+
+      const monthIndex = MONTH_LIST.indexOf(currentRoster.month);
+      const yearNum = currentRoster.year;
+
+      let startDay = 1;
+      let endDay = daysCount;
+
+      if (overrideRange === "1-15") {
+        endDay = Math.min(15, daysCount);
+      } else if (overrideRange === "16-end") {
+        startDay = Math.min(16, daysCount);
+      }
+      
+      let html = `<table class="w-full border-collapse text-left text-xs">`;
+      html += `<thead><tr class="bg-slate-900 border-b border-slate-800 text-slate-300">`;
+      html += `<th class="p-3 font-semibold uppercase tracking-wider sticky left-0 bg-slate-900 z-20 min-w-[180px]">Name of Staff</th>`;
+      html += `<th class="p-3 font-semibold uppercase tracking-wider sticky left-[180px] bg-slate-900 z-20 min-w-[90px]">Position</th>`;
+      
+      for (let d = startDay; d <= endDay; d++) {
+        const dateObj = new Date(yearNum, monthIndex, d);
+        const dayOfWeekIndex = dateObj.getDay();
+        const isSunday = dayOfWeekIndex === 0;
+
+        html += `<th class="p-2 text-center min-w-[45px] ${isSunday ? 'text-rose-400 font-bold' : 'text-slate-400'}">
+          <div>${d}</div>
+          <div class="text-[10px] font-normal">${dayNames[dayOfWeekIndex]}</div>
+        </th>`;
+      }
+      html += `</tr></thead><tbody class="divide-y divide-slate-800/60 bg-slate-950/40">`;
+
+      currentRoster.branches.forEach((branch, bIdx) => {
+        if (branchFilter !== "all" && !branch.branchName.toUpperCase().includes(branchFilter.toUpperCase())) {
+          return;
+        }
+
+        html += `<tr class="bg-slate-900/80 border-t border-slate-800">`;
+        html += `<td colspan="${(endDay - startDay + 1) + 2}" class="p-2.5 font-bold text-blue-400 text-xs tracking-wider flex items-center gap-2">
+          <span>📁 ${branch.branchName}</span>
+        </td>`;
+        html += `</tr>`;
+
+        branch.staff.forEach((st, sIdx) => {
+          if (filterText && !st.name.toLowerCase().includes(filterText.toLowerCase())) return;
+
+          html += `<tr class="hover:bg-slate-900/60 transition group">`;
+          html += `<td class="p-3 font-semibold text-slate-200 sticky left-0 bg-slate-950/90 z-10 truncate max-w-[180px]">${st.name}</td>`;
+          html += `<td class="p-3 text-slate-400 sticky left-[180px] bg-slate-950/90 z-10 text-[11px]">${st.position}</td>`;
+
+          for (let d = startDay - 1; d < endDay; d++) {
+            const shiftVal = st.shifts[d] || "";
+            
+            let badgeStyle = "background-color: #1e293b; color: #94a3b8;";
+            const foundBadge = shiftBadges.find(b => b.code.toUpperCase() === shiftVal.toUpperCase());
+            if (foundBadge) {
+              badgeStyle = `background-color: ${foundBadge.bgColor || '#2563eb'}; color: ${foundBadge.fontColor || '#ffffff'}; font-weight: 600;`;
+            } else if (shiftVal) {
+              badgeStyle = `background-color: #2563eb; color: #ffffff; font-weight: 600;`;
+            }
+
+            if (isLocked || currentUserRole === "Staff") {
+              html += `<td class="p-1.5 text-center">
+                <div style="${badgeStyle}" class="w-9 h-9 rounded text-[11px] flex items-center justify-center shadow-sm mx-auto opacity-75 cursor-not-allowed" title="${currentUserRole === 'Staff' ? 'Staff viewing mode only' : 'Locked'}">
+                  ${shiftVal}
+                </div>
+              </td>`;
+            } else {
+              html += `<td class="p-1.5 text-center">
+                <button type="button" onclick="window.openCellAssignModal(${bIdx}, ${sIdx}, ${d})" style="${badgeStyle}" class="w-9 h-9 rounded text-[11px] flex items-center justify-center transition shadow-sm mx-auto hover:opacity-90">
+                  ${shiftVal}
+                </button>
+              </td>`;
+            }
+          }
+          html += `</tr>`;
+        });
+      });
+
+      html += `<tr class="bg-slate-900 border-t-2 border-slate-700 font-bold text-slate-200">`;
+      html += `<td class="p-3 sticky left-0 bg-slate-900 z-10">ON-DUTY COVERAGE</td>`;
+      html += `<td class="p-3 sticky left-[180px] bg-slate-900 z-10 text-xs text-slate-400">DAILY</td>`;
+
+      for (let d = startDay - 1; d < endDay; d++) {
+        let activeCount = 0;
+        currentRoster.branches.forEach(b => {
+          if (branchFilter !== "all" && !b.branchName.toUpperCase().includes(branchFilter.toUpperCase())) return;
+          b.staff.forEach(s => {
+            const val = s.shifts[d];
+            if (val && val !== "OFF" && val !== "LEAVE" && val !== "SUSPENSION" && val !== "HO") {
+              activeCount++;
+            }
+          });
+        });
+        html += `<td class="p-2 text-center text-xs text-amber-400">${activeCount}</td>`;
+      }
+      html += `</tr>`;
+
+      html += `</tbody></table>`;
+      rosterTableContainer.innerHTML = html;
+    }
+
+    // Open Cell Assignment Modal
+    const cellAssignModal = document.getElementById("cellAssignModal");
+    const modalStaffTitle = document.getElementById("modalStaffTitle");
+    const modalDateTitle = document.getElementById("modalDateTitle");
+    const modalShiftSelect = document.getElementById("modalShiftSelect");
+
+    window.openCellAssignModal = function(bIdx, sIdx, dayIdx) {
+      if (currentUserRole === "Staff") {
+        alert("Staff permission restriction: You are in view-only mode. Schedule edits are restricted to Department Heads.");
+        return;
+      }
+      if (currentRoster.isLocked) {
+        alert("Schedule is locked. Department Head passcode required to edit.");
+        return;
+      }
+      selectedCellContext = { bIdx, sIdx, dayIdx };
+      const staff = currentRoster.branches[bIdx].staff[sIdx];
+      modalStaffTitle.textContent = staff.name;
+      modalDateTitle.textContent = `Day ${dayIdx + 1} (${currentRoster.month} ${currentRoster.year}) - ${currentRoster.branches[bIdx].branchName}`;
+      modalShiftSelect.value = staff.shifts[dayIdx] || "";
+      cellAssignModal.classList.remove("hidden");
+      cellAssignModal.classList.add("flex");
+    };
+
+    document.getElementById("modalSaveShiftBtn").onclick = () => {
+      if (!selectedCellContext) return;
+      const { bIdx, sIdx, dayIdx } = selectedCellContext;
+      const newVal = modalShiftSelect.value;
+      applyCellAssignment(bIdx, sIdx, dayIdx, newVal);
+      cellAssignModal.classList.add("hidden");
+      cellAssignModal.classList.remove("flex");
+    };
+
+    function applyCellAssignment(bIdx, sIdx, dayIdx, newVal) {
+      const staffMember = currentRoster.branches[bIdx].staff[sIdx];
+      const prevVal = staffMember.shifts[dayIdx] || "";
+      if (prevVal === newVal) return;
+
+      staffMember.shifts[dayIdx] = newVal;
+
+      const logEntry = {
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        staff: staffMember.name,
+        day: `Day ${dayIdx + 1} (${currentRoster.month})`,
+        previous: prevVal || "(Blank)",
+        newShift: newVal || "(Eraser)"
+      };
+      auditLog.unshift(logEntry);
+      if (auditLog.length > 50) auditLog.pop();
+
+      savedRosters[activeKey] = currentRoster;
+      localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+      localStorage.setItem("mis_audit_log", JSON.stringify(auditLog));
+
+      renderRosterTable(searchStaffInput.value);
+      updateAuditBadge();
+      updateFooterStats();
+    }
+
+    searchStaffInput.oninput = (e) => {
+      renderRosterTable(e.target.value);
+    };
+
+    function updateAuditBadge() {
+      changeCountBadge.textContent = auditLog.length;
+    }
+
+    function updateFooterStats() {
+      let totalDuty = 0;
+      let totalOff = 0;
+      currentRoster.branches.forEach(b => {
+        b.staff.forEach(s => {
+          s.shifts.forEach(sh => {
+            if (sh && sh !== "OFF" && sh !== "LEAVE" && sh !== "SUSPENSION" && sh !== "HO") totalDuty++;
+            if (sh === "OFF" || sh === "LEAVE" || sh === "HO") totalOff++;
+          });
+        });
+      });
+      document.getElementById("footerDutyDays").textContent = totalDuty;
+      document.getElementById("footerOffDays").textContent = totalOff;
+    }
+
+    // Save Button Locks Roster
+    document.getElementById("btnSaveState").onclick = () => {
+      currentRoster.isLocked = true;
+      savedRosters[activeKey] = currentRoster;
+      localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+      updateLockUI();
+      renderRosterTable(searchStaffInput.value);
+      alert(`Roster for ${activeKey} saved and locked successfully! Cells are now disabled.`);
+    };
+
+    // Head Edit Passcode Modal Trigger
+    const passcodeModal = document.getElementById("passcodeModal");
+    document.getElementById("btnHeadEdit").onclick = () => {
+      passcodeModal.classList.remove("hidden");
+      passcodeModal.classList.add("flex");
+    };
+
+    document.getElementById("passcodeForm").onsubmit = (e) => {
+      e.preventDefault();
+      const code = document.getElementById("headPasscodeInput").value;
+      if (code === "MIS-HEAD-2026") {
+        currentRoster.isLocked = false;
+        savedRosters[activeKey] = currentRoster;
+        localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+        updateLockUI();
+        renderRosterTable(searchStaffInput.value);
+        passcodeModal.classList.add("hidden");
+        passcodeModal.classList.remove("flex");
+        document.getElementById("headPasscodeInput").value = "";
+        alert("Passcode accepted! Schedule is now unlocked for Head editing.");
+      } else {
+        alert("Incorrect Head Passcode. Access denied.");
+      }
+    };
+
+    // Clear Audit History Passcode Flow (Passcode: MIS8*8*)
+    const clearAuditPasscodeModal = document.getElementById("clearAuditPasscodeModal");
+    document.getElementById("btnClearAudit").onclick = () => {
+      clearAuditPasscodeModal.classList.remove("hidden");
+      clearAuditPasscodeModal.classList.add("flex");
+    };
+
+    document.getElementById("clearAuditPasscodeForm").onsubmit = (e) => {
+      e.preventDefault();
+      const inputCode = document.getElementById("clearAuditPasscodeInput").value;
+      if (inputCode === "MIS8*8*") {
+        const clearTimestamp = new Date().toLocaleString();
+        auditLog = [{
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          staff: "SYSTEM (AUDIT CLEARED)",
+          day: "History Wiped",
+          previous: "Previous Logs",
+          newShift: `Cleared at ${clearTimestamp} by Head`
+        }];
+        localStorage.setItem("mis_audit_log", JSON.stringify(auditLog));
+        renderAuditTable();
+        updateAuditBadge();
+        clearAuditPasscodeModal.classList.add("hidden");
+        clearAuditPasscodeModal.classList.remove("flex");
+        document.getElementById("clearAuditPasscodeInput").value = "";
+        alert("Audit history successfully cleared and logged!");
+      } else {
+        alert("Incorrect passcode! Access denied.");
+      }
+    };
+
+    // Clear Notifications Passcode Flow (Passcode: MIS8*8*)
+    const clearNotifPasscodeModal = document.getElementById("clearNotifPasscodeModal");
+    document.getElementById("btnClearAllNotifs").onclick = () => {
+      clearNotifPasscodeModal.classList.remove("hidden");
+      clearNotifPasscodeModal.classList.add("flex");
+    };
+
+    document.getElementById("clearNotifPasscodeForm").onsubmit = (e) => {
+      e.preventDefault();
+      const inputCode = document.getElementById("clearNotifPasscodeInput").value;
+      if (inputCode === "MIS8*8*") {
+        systemNotifications = [];
+        localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+        renderNotificationList();
+        updateNotificationBadges();
+        clearNotifPasscodeModal.classList.add("hidden");
+        clearNotifPasscodeModal.classList.remove("flex");
+        document.getElementById("clearNotifPasscodeInput").value = "";
+        alert("All notifications successfully cleared!");
+      } else {
+        alert("Incorrect passcode! Access denied.");
+      }
+    };
+
+    // Notification Dashboard Modal Logic
+    const notificationModal = document.getElementById("notificationModal");
+    document.getElementById("btnNotifications").onclick = () => {
+      renderNotificationList();
+      notificationModal.classList.remove("hidden");
+      notificationModal.classList.add("flex");
+    };
+
+    function renderNotificationList() {
+      const container = document.getElementById("notificationListContainer");
+      if (systemNotifications.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-slate-500 text-xs">No notifications available.</div>`;
+        return;
+      }
+      let html = "";
+      systemNotifications.forEach(n => {
+        html += `<div class="p-3 bg-slate-950 rounded-lg border ${n.unread ? 'border-blue-500/40 bg-blue-950/10' : 'border-slate-800'} flex items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h4 class="text-xs font-bold text-slate-100">${n.title}</h4>
+              ${n.unread ? '<span class="w-2 h-2 rounded-full bg-blue-500"></span>' : ''}
+            </div>
+            <p class="text-xs text-slate-300 mt-1">${n.message}</p>
+            <span class="text-[10px] text-slate-500 mt-1.5 block">${n.time}</span>
+          </div>
+          <button type="button" onclick="window.dismissNotification(${n.id})" class="text-slate-500 hover:text-slate-300 text-xs font-bold px-1.5 py-0.5" title="Dismiss">&times;</button>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    window.dismissNotification = function(id) {
+      systemNotifications = systemNotifications.filter(n => n.id !== id);
+      localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+      renderNotificationList();
+      updateNotificationBadges();
+    };
+
+    // MIS Manager Authentication & Approval Portal Logic
+    const managerAuthModal = document.getElementById("managerAuthModal");
+    const managerApprovalModal = document.getElementById("managerApprovalModal");
+
+    document.getElementById("btnManagerApprovals").onclick = () => {
+      managerAuthModal.classList.remove("hidden");
+      managerAuthModal.classList.add("flex");
+    };
+
+    document.getElementById("managerAuthForm").onsubmit = (e) => {
+      e.preventDefault();
+      const pwd = document.getElementById("managerPasswordInput").value;
+      if (pwd === "admin123") {
+        managerAuthModal.classList.add("hidden");
+        managerAuthModal.classList.remove("flex");
+        document.getElementById("managerPasswordInput").value = "";
+        renderApprovalTable();
+        managerApprovalModal.classList.remove("hidden");
+        managerApprovalModal.classList.add("flex");
+      } else {
+        alert("Incorrect MIS Manager Password. Access denied.");
+      }
+    };
+
+    function renderApprovalTable() {
+      const tbody = document.getElementById("approvalTableBody");
+      if (transactionRequests.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No transaction requests recorded.</td></tr>`;
+        return;
+      }
+      let html = "";
+      transactionRequests.forEach(tx => {
+        let statusBadge = `<span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-semibold text-[10px]">Pending</span>`;
+        if (tx.status === "Approved") {
+          statusBadge = `<span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-semibold text-[10px]">Approved</span>`;
+        } else if (tx.status === "Rejected") {
+          statusBadge = `<span class="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-semibold text-[10px]">Rejected</span>`;
+        }
+
+        html += `<tr class="hover:bg-slate-900">
+          <td class="p-2.5 text-slate-400">${tx.filedDate}</td>
+          <td class="p-2.5 font-medium text-slate-200">${tx.staff}</td>
+          <td class="p-2.5 text-blue-400 font-semibold">${tx.category}</td>
+          <td class="p-2.5 text-slate-300">${tx.targetDate}</td>
+          <td class="p-2.5 text-slate-400 text-[11px]">${tx.details}<br><span class="italic text-slate-500">"${tx.reason}"</span></td>
+          <td class="p-2.5">${statusBadge}</td>
+          <td class="p-2.5 text-right space-x-1">
+            <button type="button" onclick="window.updateTxStatus(${tx.id}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded transition">Approve</button>
+            <button type="button" onclick="window.updateTxStatus(${tx.id}, 'Rejected')" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] px-2.5 py-1 rounded transition">Reject</button>
+          </td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    }
+
+    window.updateTxStatus = function(id, status) {
+      const tx = transactionRequests.find(t => t.id === id);
+      if (tx) {
+        tx.status = status;
+        localStorage.setItem("mis_transaction_requests", JSON.stringify(transactionRequests));
+        
+        const notif = {
+          id: Date.now(),
+          time: new Date().toISOString().slice(0,16).replace('T', ' '),
+          title: `Transaction ${status}`,
+          message: `Manager Crisame L. Yanson ${status.toLowerCase()} ${tx.staff}'s ${tx.category} request for ${tx.targetDate}.`,
+          unread: true
+        };
+        systemNotifications.unshift(notif);
+        localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+
+        renderApprovalTable();
+        updatePendingTxBadge();
+        updateNotificationBadges();
+      }
+    };
+
+    // Manage Legends & Color Adjustment Modal Logic
+    const manageLegendsModal = document.getElementById("manageLegendsModal");
+    const legendForm = document.getElementById("legendForm");
+    const legendTableBody = document.getElementById("legendTableBody");
+    const editLegendIndex = document.getElementById("editLegendIndex");
+    const legendCodeInput = document.getElementById("legendCodeInput");
+    const legendLabelInput = document.getElementById("legendLabelInput");
+    const legendBgColor = document.getElementById("legendBgColor");
+    const legendFontColor = document.getElementById("legendFontColor");
+    const legendFormTitle = document.getElementById("legendFormTitle");
+    const saveLegendBtn = document.getElementById("saveLegendBtn");
+    const cancelLegendEditBtn = document.getElementById("cancelLegendEditBtn");
+
+    document.getElementById("btnManageLegends").onclick = () => {
+      renderLegendTable();
+      manageLegendsModal.classList.remove("hidden");
+      manageLegendsModal.classList.add("flex");
+    };
+
+    function renderLegendTable() {
+      let html = "";
+      shiftBadges.forEach((b, idx) => {
+        html += `<tr class="hover:bg-slate-900">
+          <td class="p-2">
+            <span style="background-color: ${b.bgColor || '#2563eb'}; color: ${b.fontColor || '#ffffff'};" class="px-2.5 py-1 rounded text-xs font-bold">${b.code}</span>
+          </td>
+          <td class="p-2 text-slate-300">${b.label}</td>
+          <td class="p-2 text-right space-x-2">
+            <button type="button" onclick="window.editLegend(${idx})" class="text-amber-400 hover:text-amber-300 font-semibold text-[11px]">Edit</button>
+            <button type="button" onclick="window.deleteLegend(${idx})" class="text-rose-400 hover:text-rose-300 font-semibold text-[11px]">Delete</button>
+          </td>
+        </tr>`;
+      });
+      legendTableBody.innerHTML = html;
+    }
+
+    legendForm.onsubmit = (e) => {
+      e.preventDefault();
+      const code = legendCodeInput.value.trim().toUpperCase();
+      const label = legendLabelInput.value.trim();
+      const bgColor = legendBgColor.value;
+      const fontColor = legendFontColor.value;
+      const editIdx = parseInt(editLegendIndex.value);
+
+      if (editIdx >= 0) {
+        shiftBadges[editIdx] = { code, label, bgColor, fontColor };
+        resetLegendForm();
+      } else {
+        if (shiftBadges.some(b => b.code.toUpperCase() === code)) {
+          alert("Shift code already exists!");
+          return;
+        }
+        shiftBadges.push({ code, label, bgColor, fontColor });
+        resetLegendForm();
+      }
+
+      localStorage.setItem("mis_shift_badges", JSON.stringify(shiftBadges));
+      renderBadgePalette();
+      populateCellAssignDropdown();
+      renderLegendTable();
+      renderRosterTable(searchStaffInput.value);
+    };
+
+    window.editLegend = function(idx) {
+      const b = shiftBadges[idx];
+      editLegendIndex.value = idx;
+      legendCodeInput.value = b.code;
+      legendLabelInput.value = b.label;
+      legendBgColor.value = b.bgColor || "#2563eb";
+      legendFontColor.value = b.fontColor || "#ffffff";
+      legendFormTitle.textContent = "Edit Shift Code & Colors";
+      saveLegendBtn.textContent = "Update Legend";
+      cancelLegendEditBtn.classList.remove("hidden");
+    };
+
+    window.deleteLegend = function(idx) {
+      if (shiftBadges.length <= 1) {
+        alert("You must keep at least one shift code.");
+        return;
+      }
+      if (confirm(`Are you sure you want to delete shift code '${shiftBadges[idx].code}'?`)) {
+        shiftBadges.splice(idx, 1);
+        localStorage.setItem("mis_shift_badges", JSON.stringify(shiftBadges));
+        renderBadgePalette();
+        populateCellAssignDropdown();
+        renderLegendTable();
+        renderRosterTable(searchStaffInput.value);
+      }
+    };
+
+    cancelLegendEditBtn.onclick = () => {
+      resetLegendForm();
+    };
+
+    function resetLegendForm() {
+      editLegendIndex.value = "-1";
+      legendCodeInput.value = "";
+      legendLabelInput.value = "";
+      legendBgColor.value = "#2563eb";
+      legendFontColor.value = "#ffffff";
+      legendFormTitle.textContent = "Add New Shift Code";
+      saveLegendBtn.textContent = "Add Legend";
+      cancelLegendEditBtn.classList.add("hidden");
+    }
+
+    // Clear Date Range Per Staff Logic
+    const clearRangeModal = document.getElementById("clearRangeModal");
+    document.getElementById("btnClearRange").onclick = () => {
+      if (currentRoster.isLocked) {
+        alert("Cannot clear shifts while schedule is locked. Unlock via Head Edit first.");
+        return;
+      }
+      clearRangeModal.classList.remove("hidden");
+      clearRangeModal.classList.add("flex");
+    };
+
+    document.getElementById("confirmClearRangeBtn").onclick = () => {
+      const targetStaff = document.getElementById("clearStaffSelect").value;
+      const start = parseInt(document.getElementById("clearStartDay").value);
+      const end = parseInt(document.getElementById("clearEndDay").value);
+
+      if (isNaN(start) || isNaN(end) || start > end || start < 1 || end > currentRoster.daysInMonth) {
+        alert(`Please enter a valid date range between 1 and ${currentRoster.daysInMonth}.`);
+        return;
+      }
+
+      currentRoster.branches.forEach(b => {
+        b.staff.forEach(s => {
+          if (targetStaff === "all" || s.name === targetStaff) {
+            for (let d = start - 1; d < end; d++) {
+              s.shifts[d] = "";
+            }
+          }
+        });
+      });
+
+      savedRosters[activeKey] = currentRoster;
+      localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+      renderRosterTable();
+      updateFooterStats();
+
+      clearRangeModal.classList.add("hidden");
+      clearRangeModal.classList.remove("flex");
+      alert(`Successfully cleared shifts from Day ${start} to Day ${end} for ${targetStaff === 'all' ? 'all staff' : targetStaff}.`);
+    };
+
+    // PNG Export Logic with Branch & Range Filter
+    const pngModal = document.getElementById("pngModal");
+    document.getElementById("btnSavePng").onclick = () => {
+      pngModal.classList.remove("hidden");
+      pngModal.classList.add("flex");
+    };
+
+    document.getElementById("confirmPngExportBtn").onclick = () => {
+      const range = document.getElementById("pngRangeSelect").value;
+      const branchFilter = document.getElementById("pngBranchSelect").value;
+      pngModal.classList.add("hidden");
+      pngModal.classList.remove("flex");
+
+      renderRosterTable("", range, branchFilter);
+
+      setTimeout(() => {
+        html2canvas(rosterTableContainer, { backgroundColor: "#0f172a", scale: 2 }).then(canvas => {
+          const link = document.createElement("a");
+          link.download = `MIS_Roster_${currentRoster.month}_${currentRoster.year}_${branchFilter}_${range}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          renderRosterTable(searchStaffInput.value, "full", "all");
+        });
+      }, 200);
+    };
+
+    // PDF Export Logic with Branch & Range Filter
+    const pdfModal = document.getElementById("pdfModal");
+    document.getElementById("btnSavePdf").onclick = () => {
+      pdfModal.classList.remove("hidden");
+      pdfModal.classList.add("flex");
+    };
+
+    document.getElementById("confirmPdfExportBtn").onclick = () => {
+      const range = document.getElementById("pdfRangeSelect").value;
+      const branchFilter = document.getElementById("pdfBranchSelect").value;
+      pdfModal.classList.add("hidden");
+      pdfModal.classList.remove("flex");
+
+      const monthIndex = MONTH_LIST.indexOf(currentRoster.month);
+      const yearNum = currentRoster.year;
+      const dayNames = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+
+      let startDay = 1;
+      let endDay = currentRoster.daysInMonth;
+      if (range === "1-15") {
+        endDay = Math.min(15, currentRoster.daysInMonth);
+      } else if (range === "16-end") {
+        startDay = Math.min(16, currentRoster.daysInMonth);
+      }
+
+      const printWin = window.open('', '_blank', 'width=950,height=700');
+      let tableHtml = `<table border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 10px;">`;
+      tableHtml += `<thead><tr style="background:#1e3a8a; color:#fff;"><th>Staff Name</th><th>Position</th>`;
+      
+      for (let d = startDay; d <= endDay; d++) {
+        const dateObj = new Date(yearNum, monthIndex, d);
+        const dayOfWeekIndex = dateObj.getDay();
+        tableHtml += `<th align="center">${d}<br><span style="font-size:8px;">${dayNames[dayOfWeekIndex]}</span></th>`;
+      }
+      tableHtml += `</tr></thead><tbody>`;
+
+      currentRoster.branches.forEach(b => {
+        if (branchFilter !== "all" && !b.branchName.toUpperCase().includes(branchFilter.toUpperCase())) return;
+        b.staff.forEach(st => {
+          tableHtml += `<tr><td><b>${st.name}</b></td><td>${st.position}</td>`;
+          for (let d = startDay - 1; d < endDay; d++) {
+            tableHtml += `<td align="center">${st.shifts[d] || ''}</td>`;
+          }
+          tableHtml += `</tr>`;
+        });
+      });
+      tableHtml += `</tbody></table>`;
+
+      printWin.document.write(`
+        <html>
+        <head>
+          <title>MIS Shift Schedule Roster — ${currentRoster.month} ${currentRoster.year} (${branchFilter})</title>
+          <style>
+            body { font-family: sans-serif; padding: 25px; color: #111; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+            .header h2 { margin: 0; color: #1e3a8a; }
+            .header p { margin: 5px 0 0; font-size: 12px; color: #555; }
+            .print-btn { margin-top: 25px; text-align: center; }
+            .print-btn button { background: #1e3a8a; color: #fff; border: none; padding: 10px 20px; font-size: 14px; border-radius: 5px; cursor: pointer; }
+            @media print { .print-btn { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>HOLY MOTHER OF MERCY GROUP OF HOSPITALS</h2>
+            <p>Management Information Systems (MIS) — Roster for ${currentRoster.month.toUpperCase()} ${currentRoster.year} (${branchFilter})</p>
+          </div>
+          ${tableHtml}
+          <div class="print-btn">
+            <button onclick="window.print()">Print / Save as PDF</button>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    };
+
+    // Database Backup & Restore Logic
+    document.getElementById("btnBackupDb").onclick = () => {
+      const backupData = {
+        app: "MIS_SHIFT_SCHEDULER_DB",
+        version: "3.2",
+        exportDate: new Date().toISOString(),
+        shiftBadges: shiftBadges,
+        savedRosters: savedRosters,
+        auditLog: auditLog,
+        transactionRequests: transactionRequests,
+        systemNotifications: systemNotifications,
+        userPasswords: userPasswords
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `MIS_Scheduler_Database_Backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      alert("Database backup successfully downloaded as JSON!");
+    };
+
+    document.getElementById("restoreDbInput").onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (!parsed.savedRosters || !parsed.shiftBadges) {
+            throw new Error("Invalid backup file structure.");
+          }
+          if (confirm("Restoring this database will overwrite all current local rosters and custom legend settings. Proceed?")) {
+            shiftBadges = parsed.shiftBadges;
+            savedRosters = parsed.savedRosters;
+            auditLog = parsed.auditLog || [];
+            transactionRequests = parsed.transactionRequests || [];
+            systemNotifications = parsed.systemNotifications || [];
+            userPasswords = parsed.userPasswords || userPasswords;
+            
+            localStorage.setItem("mis_shift_badges", JSON.stringify(shiftBadges));
+            localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+            localStorage.setItem("mis_audit_log", JSON.stringify(auditLog));
+            localStorage.setItem("mis_transaction_requests", JSON.stringify(transactionRequests));
+            localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+            localStorage.setItem("mis_user_passwords", JSON.stringify(userPasswords));
+            
+            const firstKey = Object.keys(savedRosters)[0];
+            if (firstKey) {
+              activeKey = firstKey;
+              currentRoster = savedRosters[activeKey];
+              localStorage.setItem("mis_active_roster_key", activeKey);
+            }
+
+            initApp();
+            alert("Database successfully restored from backup file!");
+          }
+        } catch (err) {
+          alert("Error restoring database: " + err.message);
+        }
+        e.target.value = "";
+      };
+      reader.readAsText(file);
+    };
+
+    document.getElementById("btnClearGrid").onclick = () => {
+      if (currentRoster.isLocked) {
+        alert("Cannot clear grid while schedule is locked. Unlock via Head Edit first.");
+        return;
+      }
+      if (confirm("Are you sure you want to clear ALL shifts for this entire month?")) {
+        currentRoster.branches.forEach(b => {
+          b.staff.forEach(s => {
+            s.shifts = new Array(currentRoster.daysInMonth).fill("");
+          });
+        });
+        savedRosters[activeKey] = currentRoster;
+        localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+        renderRosterTable();
+        updateFooterStats();
+        alert("Roster grid cleared.");
+      }
+    };
+
+    // Modal Triggers
+    const newRosterModal = document.getElementById("newRosterModal");
+    const transactionModal = document.getElementById("transactionModal");
+    const changesModal = document.getElementById("changesModal");
+    const legendModal = document.getElementById("legendModal");
+
+    document.getElementById("btnNewRoster").onclick = () => {
+      newRosterModal.classList.remove("hidden");
+      newRosterModal.classList.add("flex");
+    };
+    document.getElementById("btnRequestTransaction").onclick = () => {
+      transactionModal.classList.remove("hidden");
+      transactionModal.classList.add("flex");
+    };
+    document.getElementById("btnViewChanges").onclick = () => {
+      renderAuditTable();
+      changesModal.classList.remove("hidden");
+      changesModal.classList.add("flex");
+    };
+    document.getElementById("btnLegend").onclick = () => {
+      renderLegendGuide();
+      legendModal.classList.remove("hidden");
+      legendModal.classList.add("flex");
+    };
+
+    // Capture newly submitted transactions & create notification
+    document.getElementById("transactionForm").onsubmit = (e) => {
+      e.preventDefault();
+      const category = txCategory.value;
+      const staffName = document.getElementById("txStaffName").value;
+      const date = document.getElementById("txDate").value;
+      const detailsEl = document.getElementById("txPeerOrDetails");
+      const details = detailsEl ? detailsEl.value : "";
+      const reason = document.getElementById("txReason").value;
+
+      const newTx = {
+        id: Date.now(),
+        filedDate: new Date().toISOString().slice(0,16).replace('T', ' '),
+        staff: staffName,
+        category: category,
+        targetDate: date,
+        details: category === 'Switch Sched' ? `Switch with ${details}` : category === 'Leave' ? details : `Overtime: ${details}`,
+        reason: reason || 'None provided',
+        status: 'Pending'
+      };
+
+      transactionRequests.unshift(newTx);
+      localStorage.setItem("mis_transaction_requests", JSON.stringify(transactionRequests));
+
+      const newNotif = {
+        id: Date.now() + 1,
+        time: new Date().toISOString().slice(0,16).replace('T', ' '),
+        title: `New ${category} Request`,
+        message: `${staffName} submitted a request for ${date}. Awaiting Manager approval.`,
+        unread: true
+      };
+      systemNotifications.unshift(newNotif);
+      localStorage.setItem("mis_system_notifications", JSON.stringify(systemNotifications));
+
+      updatePendingTxBadge();
+      updateNotificationBadges();
+
+      transactionModal.classList.add("hidden");
+      transactionModal.classList.remove("flex");
+
+      const printWin = window.open('', '_blank', 'width=700,height=600');
+      printWin.document.write(`
+        <html>
+        <head>
+          <title>MIS Transaction Request Slip</title>
+          <style>
+            body { font-family: sans-serif; padding: 30px; color: #111; }
+            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 20px; }
+            .header h2 { margin: 0; color: #1e3a8a; }
+            .header p { margin: 5px 0 0; font-size: 13px; color: #555; }
+            .meta { margin-bottom: 20px; font-size: 14px; }
+            .meta table { width: 100%; border-collapse: collapse; }
+            .meta td { padding: 8px; border: 1px solid #cbd5e1; }
+            .meta td.label { font-weight: bold; background: #f1f5f9; width: 35%; }
+            .signatures { margin-top: 50px; display: flex; justify-content: space-between; }
+            .sig-box { text-align: center; width: 40%; border-top: 1px solid #333; padding-top: 5px; font-size: 13px; }
+            .print-btn { margin-top: 30px; text-align: center; }
+            .print-btn button { background: #2563eb; color: #fff; border: none; padding: 10px 20px; font-size: 14px; border-radius: 5px; cursor: pointer; }
+            @media print { .print-btn { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>HOLY MOTHER OF MERCY GROUP OF HOSPITALS</h2>
+            <p>Management Information Systems (MIS) Department — Transaction Slip (Pending Approval)</p>
+          </div>
+          <div class="meta">
+            <table>
+              <tr><td class="label">Transaction Category</td><td><b>${category.toUpperCase()}</b></td></tr>
+              <tr><td class="label">Staff Requestor</td><td>${staffName}</td></tr>
+              <tr><td class="label">Target Date</td><td>${date}</td></tr>
+              <tr><td class="label">${category === 'Switch Sched' ? 'Switch With Peer' : category === 'Leave' ? 'Leave Type' : 'Overtime Details'}</td><td>${details}</td></tr>
+              <tr><td class="label">Reason / Justification</td><td>${reason || 'None provided'}</td></tr>
+              <tr><td class="label">Date Filed</td><td>${new Date().toLocaleString()}</td></tr>
+              <tr><td class="label">Approval Status</td><td><b style="color: #d97706;">PENDING MIS MANAGER APPROVAL</b></td></tr>
+            </table>
+          </div>
+          <div class="signatures">
+            <div class="sig-box">Requested by:<br><br><b>${staffName}</b></div>
+            <div class="sig-box">Approved by MIS Manager:<br><br><b>CRISAME L. YANSON</b></div>
+          </div>
+          <div class="print-btn">
+            <button onclick="window.print()">Print Formal Slip</button>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+      alert("Transaction request submitted successfully and logged to the message dashboard!");
+    };
+
+    function renderLegendGuide() {
+      const container = document.getElementById("legendGuideContainer");
+      let html = "";
+      shiftBadges.forEach(b => {
+        html += `<div class="flex items-center justify-between p-2 bg-slate-950 rounded border border-slate-800">
+          <span style="background-color: ${b.bgColor || '#2563eb'}; color: ${b.fontColor || '#ffffff'};" class="font-bold px-2 py-1 rounded text-xs">${b.code}</span>
+          <span class="text-slate-300 text-xs">${b.label}</span>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    document.querySelectorAll(".closeModalBtn").forEach(btn => {
+      btn.onclick = () => {
+        newRosterModal.classList.add("hidden"); newRosterModal.classList.remove("flex");
+        transactionModal.classList.add("hidden"); transactionModal.classList.remove("flex");
+        changesModal.classList.add("hidden"); changesModal.classList.remove("flex");
+        legendModal.classList.add("hidden"); legendModal.classList.remove("flex");
+        cellAssignModal.classList.add("hidden"); cellAssignModal.classList.remove("flex");
+        passcodeModal.classList.add("hidden"); passcodeModal.classList.remove("flex");
+        pngModal.classList.add("hidden"); pngModal.classList.remove("flex");
+        pdfModal.classList.add("hidden"); pdfModal.classList.remove("flex");
+        clearRangeModal.classList.add("hidden"); clearRangeModal.classList.remove("flex");
+        manageLegendsModal.classList.add("hidden"); manageLegendsModal.classList.remove("flex");
+        managerAuthModal.classList.add("hidden"); managerAuthModal.classList.remove("flex");
+        managerApprovalModal.classList.add("hidden"); managerApprovalModal.classList.remove("flex");
+        notificationModal.classList.add("hidden"); notificationModal.classList.remove("flex");
+        clearAuditPasscodeModal.classList.add("hidden"); clearAuditPasscodeModal.classList.remove("flex");
+        clearNotifPasscodeModal.classList.add("hidden"); clearNotifPasscodeModal.classList.remove("flex");
+        changePasswordModal.classList.add("hidden"); changePasswordModal.classList.remove("flex");
+        adminResetModal.classList.add("hidden"); adminResetModal.classList.remove("flex");
+        requestResetModal.classList.add("hidden"); requestResetModal.classList.remove("flex");
+      };
+    });
+
+    document.getElementById("newRosterForm").onsubmit = (e) => {
+      e.preventDefault();
+      const month = document.getElementById("newRosterMonth").value;
+      const year = parseInt(document.getElementById("newRosterYear").value);
+      const key = `${month} ${year}`;
+      const monthIndex = MONTH_LIST.indexOf(month);
+      const daysCount = new Date(year, monthIndex + 1, 0).getDate();
+
+      if (savedRosters[key]) {
+        currentRoster = savedRosters[key];
+      } else {
+        let newBranches = JSON.parse(JSON.stringify(INITIAL_ROSTER.branches));
+        newBranches.forEach(b => {
+          b.staff.forEach(s => {
+            s.shifts = new Array(daysCount).fill("");
+          });
+        });
+        currentRoster = { month, year, daysInMonth: daysCount, isLocked: false, branches: newBranches };
+        savedRosters[key] = currentRoster;
+      }
+
+      activeKey = key;
+      localStorage.setItem("mis_saved_rosters_dict", JSON.stringify(savedRosters));
+      localStorage.setItem("mis_active_roster_key", activeKey);
+
+      headerMonthTitle.textContent = `${month} ${year}`;
+      renderRosterTable();
+      populateClearStaffDropdown();
+      updateFooterStats();
+      updateLockUI();
+      newRosterModal.classList.add("hidden");
+      newRosterModal.classList.remove("flex");
+      alert(`Loaded roster for ${month} ${year} (${daysCount} days)!`);
+    };
+
+    const txCategory = document.getElementById("txCategory");
+    const txDynamicLabel = document.getElementById("txDynamicLabel");
+    const txDynamicFieldWrapper = document.getElementById("txDynamicFieldWrapper");
+
+    txCategory.onchange = (e) => {
+      const val = e.target.value;
+      if (val === "Switch Sched") {
+        txDynamicLabel.textContent = "Switch With Peer";
+        txDynamicFieldWrapper.innerHTML = `
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Switch With Peer</label>
+          <select id="txPeerOrDetails" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="STEPHEN ABELONG">STEPHEN ABELONG</option>
+            <option value="JUDY MAE PAGAYUNAN">JUDY MAE PAGAYUNAN</option>
+            <option value="ROWYN CORONADO">ROWYN CORONADO</option>
+            <option value="RESTY EYAN">RESTY EYAN</option>
+            <option value="RICHARD DAVID">RICHARD DAVID</option>
+            <option value="JULIA TRINA">JULIA TRINA</option>
+            <option value="ALLEN MONDEJAR">ALLEN MONDEJAR</option>
+          </select>`;
+      } else if (val === "Leave") {
+        txDynamicLabel.textContent = "Leave Type";
+        txDynamicFieldWrapper.innerHTML = `
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Leave Type</label>
+          <select id="txPeerOrDetails" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="Vacation Leave (VL)">Vacation Leave (VL)</option>
+            <option value="Sick Leave (SL)">Sick Leave (SL)</option>
+            <option value="Emergency Leave (EL)">Emergency Leave (EL)</option>
+          </select>`;
+      } else {
+        txDynamicLabel.textContent = "Overtime Hours / Task";
+        txDynamicFieldWrapper.innerHTML = `
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Overtime Hours / Task</label>
+          <input type="text" id="txPeerOrDetails" placeholder="e.g., 4 Hours - System Deployment" class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">`;
+      }
+    };
+
+    function renderAuditTable() {
+      const tbody = document.getElementById("auditTableBody");
+      if (auditLog.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No adjustments recorded yet. Click schedule cells to start tracking.</td></tr>`;
+        return;
+      }
+      let html = "";
+      auditLog.forEach(item => {
+        html += `<tr class="hover:bg-slate-900">
+          <td class="p-2.5 text-slate-400">${item.timestamp}</td>
+          <td class="p-2.5 font-medium text-slate-200">${item.staff}</td>
+          <td class="p-2.5 text-slate-300">${item.day}</td>
+          <td class="p-2.5 text-rose-400">${item.previous}</td>
+          <td class="p-2.5 text-emerald-400 font-semibold">${item.newShift}</td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
